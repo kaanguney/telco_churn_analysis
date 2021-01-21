@@ -1,0 +1,79 @@
+# read data
+data <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv", header = TRUE, sep = ",")
+head(data)
+tail(data)
+nrow(data) # 7043
+ncol(data) # 21
+
+# distribution of customer tenure, i.e number of months customer has stayed with the company 
+hist(data$tenure)
+
+# separate categorical and numeric values 
+summary(data)
+numeric_data <- subset(data, select = c(MonthlyCharges, TotalCharges, SeniorCitizen, tenure))
+categorical_data <- subset(data, select = -c(MonthlyCharges, TotalCharges, SeniorCitizen, tenure))
+
+# customer ID is redundant remove it 
+categorical_data <- subset(categorical_data, select = -c(customerID))
+
+# check missing values 
+sum(is.na(numeric_data)) # 11
+sum(is.na(categorical_data)) # 0
+# fill missing values in numeric data
+numeric_data$TotalCharges[which(is.na(numeric_data$TotalCharges))] <- mean(numeric_data$TotalCharges, na.rm = TRUE)
+# check 
+sum(is.na(numeric_data$TotalCharges)) # 0
+
+# convert categorical labels to binary labels
+categorical_data$Churn <- ifelse(categorical_data$Churn == "Yes", 1, 0)
+
+# check outliers 
+boxplot(data$TotalCharges)
+boxplot(data$MonthlyCharges)
+boxplot(data$tenure)
+# boxplots demonstrate no outliers detected 
+
+# normalize for faster execution 
+normalize <- function(data) {
+  data <- (data - min(data)) / (max(data) - min(data))
+  return(data)
+}
+numeric_data <- normalize(numeric_data)
+summary(numeric_data)
+
+# merge label with features 
+numeric_data <- cbind(numeric_data, categorical_data$Churn)
+colnames(numeric_data)[ncol(numeric_data)] <- "Churn"
+
+# train, test split 
+library(caret)
+set.seed(42) # stable execution
+split_indexes <- caret::createDataPartition(y = numeric_data$Churn, times = 1, p = .75, list = F)
+training <- as.data.frame(numeric_data[split_indexes,])
+testing <- as.data.frame(numeric_data[-split_indexes,])
+table(numeric_data$Churn) 
+
+# apply k-nearest neighbours algoritm to data 
+library(class)
+set.seed(42)
+colnames(numeric_data)
+(knn_predictions <- knn(train = training[, -5], test = testing[, -5], cl = training[[5]], k = 3))
+head(knn_predictions) 
+head(testing[[5]]) 
+
+# confusion matrix 
+(my_table <- table(knn_predictions, testing[[5]], dnn = c("Predictions", "Actual/Reference")))
+confusionMatrix(my_table, mode = "everything")
+
+
+
+
+
+
+
+
+
+
+
+
+

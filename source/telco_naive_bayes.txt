@@ -1,0 +1,70 @@
+# read data 
+data <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv", header = TRUE, sep = ",")
+head(data)
+summary(data)
+
+# data exploration 
+unique(data$StreamingTV)
+f_stream <- as.factor(data$StreamingTV)
+levels(f_stream)
+# check the distribution for streaming TV
+table(f_stream)
+
+# separate categorical and numeric values 
+summary(data)
+numeric_data <- subset(data, select = c(MonthlyCharges, TotalCharges, SeniorCitizen, tenure))
+categorical_data <- subset(data, select = -c(MonthlyCharges, TotalCharges, SeniorCitizen, tenure))
+
+# customer ID is redundant remove it 
+categorical_data <- subset(categorical_data, select = -c(customerID))
+
+# check missing values 
+sum(is.na(numeric_data)) # 11
+sum(is.na(categorical_data)) # 0
+# fill missing values in numeric data
+numeric_data$TotalCharges[which(is.na(numeric_data$TotalCharges))] <- mean(numeric_data$TotalCharges, na.rm = TRUE)
+# check 
+sum(is.na(numeric_data$TotalCharges)) # 0
+
+# categorical Naive-Bayes
+summary(categorical_data)
+
+# convert response variable to factor 
+categorical_data$Churn <- as.factor(categorical_data$Churn)
+
+# train, test split 
+library(caret)
+set.seed(42) # stable execution
+split_indexes <- caret::createDataPartition(y = categorical_data$Churn, times = 1, p = .75, list = F)
+training <- as.data.frame(categorical_data[split_indexes,])
+testing <- as.data.frame(categorical_data[-split_indexes,])
+table(categorical_data$Churn) 
+
+# apply Naive-Bayes to categorical data 
+library(e1071)
+naiveB_model <- naiveBayes(training[,1:15], training[[16]])
+naiveB_model
+
+# find predictions on the model 
+(nb_predictions <- predict(naiveB_model, testing[,1:15]))
+(nb_probs <- predict(naiveB_model, testing[,1:15], "raw"))
+
+myConfTable <- confusionMatrix(data = nb_predictions, reference = testing[[16]], dnn = c("Predictions", "Actual/Reference"), mode = "everything")
+(accuracy <- myConfTable$overall["Accuracy"]) # 0.7130682 
+
+probmax <- NULL
+for(i in 1:nrow(testing)){
+probmax[i] <- max(nb_probs[i,1],nb_probs[i,2])      
+}
+results <- data.frame(test[[16]], nb_predictions, nb_probs,probmax)
+(ave_prob <- mean(probmax))
+
+# find predictions on the model
+(my_table <- table(nb_predictions, testing[[16]], dnn = c("Predictions", "Actual/Reference")))
+
+# confusion matrix 
+confusionMatrix(data = nb_predictions, reference = testing[[16]], dnn = c("Predictions", "Actual/Reference"), mode = "everything")
+
+
+
+
